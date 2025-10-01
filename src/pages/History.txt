@@ -1,0 +1,116 @@
+import React, { useEffect, useState } from "react";
+import { auth, db } from "../db/firebase";
+import { collection, query, where, getDocs, orderBy, doc, getDoc } from "firebase/firestore";
+import { useNavigate } from "react-router-dom";
+import Loading from "./Loading";
+import { onAuthStateChanged } from "firebase/auth";
+
+const History = () => {
+  const navigate = useNavigate();
+  const [userData, setUserData] = useState(null);
+  const [expenses, setExpenses] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        navigate("/");
+        return;
+      }
+
+      setLoading(true);
+
+      try {
+        // Current user info
+        const userSnap = await getDoc(doc(db, "users", user.uid));
+        if (userSnap.exists()) setUserData(userSnap.data());
+
+        // Fetch expenses safely
+        const expensesRef = collection(db, "expenses");
+        const q = query(expensesRef, where("personEmail", "==", user.email));
+        const snapshot = await getDocs(q);
+        const expensesList = [];
+        snapshot.forEach((doc) => expensesList.push({ id: doc.id, ...doc.data() }));
+
+        // Sort manually by createdAt if exists
+        expensesList.sort((a, b) => {
+          const timeA = a.createdAt?.seconds || 0;
+          const timeB = b.createdAt?.seconds || 0;
+          return timeB - timeA;
+        });
+
+        setExpenses(expensesList);
+      } catch (err) {
+        console.error("Error fetching expenses:", err);
+      }
+
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [navigate]);
+
+  const formatDate = (timestamp) => {
+    if (!timestamp) return "-";
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp.seconds * 1000);
+    return date.toLocaleDateString() + " " + date.toLocaleTimeString();
+  };
+
+  const totalUserExpense = expenses.reduce((acc, curr) => acc + (curr.amount || 0), 0);
+
+  if (loading) return <Loading />;
+  if (!userData) return <div className="text-center mt-5">No user data found.</div>;
+
+  return (
+    <div className="container mt-5">
+
+      {/* User info */}
+      <div className="card shadow p-4 mb-4">
+        <h2 className="text-primary mb-3 text-center">Your Info</h2>
+        <ul className="list-group list-group-flush">
+          <li className="list-group-item"><strong>Name:</strong> {userData.name}</li>
+          <li className="list-group-item"><strong>Email:</strong> {userData.email}</li>
+          <li className="list-group-item"><strong>Mobile:</strong> {userData.mobile}</li>
+          <li className="list-group-item"><strong>Total Expense:</strong> ₹{totalUserExpense}</li>
+        </ul>
+      </div>
+
+      {/* User expense history */}
+      <div className="card shadow p-4">
+        <h2 className="text-primary mb-3 text-center">Your Expense History</h2>
+        {expenses.length === 0 ? (
+          <div className="text-center text-muted">No expenses found.</div>
+        ) : (
+          <div className="table-responsive">
+            <table className="table table-striped table-bordered">
+              <thead className="table-dark">
+                <tr>
+                  <th>#</th>
+                  <th>Expense Type</th>
+                  <th>Description</th>
+                  <th>Amount (₹)</th>
+                  <th>Expense Date</th>
+                  <th>Added On</th>
+                </tr>
+              </thead>
+              <tbody>
+                {expenses.map((exp, index) => (
+                  <tr key={exp.id}>
+                    <td>{index + 1}</td>
+                    <td>{exp.expenseType}</td>
+                    <td>{exp.description || "-"}</td>
+                    <td>₹{exp.amount || 0}</td>
+                    <td>{exp.expenseDate ? new Date(exp.expenseDate.seconds * 1000).toLocaleDateString() : "-"}</td>
+                    <td>{formatDate(exp.createdAt)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default History;

@@ -1,0 +1,35 @@
+import React from "react";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import Nav from "./pages/Nav";
+import Home from "./pages/Home";
+import AddExpense from './pages/AddExpense'
+
+// Dummy Pages (you can replace with real components)
+
+
+const PersonAccount = () => (
+  <h2 className="text-center mt-5">👤 Person Account Details</h2>
+);
+const Login = () => <h2 className="text-center mt-5">🔐 Login Page</h2>;
+
+const App = () => {
+  // later you can manage login with Firebase Auth
+  const isLoggedIn = true; // change this to false for testing
+
+  return (
+    <Router>
+      {/* Navbar */}
+      <Nav isLoggedIn={isLoggedIn} />
+
+      {/* Page Routes */}
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/add-expense" element={<AddExpense />} />
+        <Route path="/person-account" element={<PersonAccount />} />
+        <Route path="/login" element={<Login />} />
+      </Routes>
+    </Router>
+  );
+};
+
+export default App;

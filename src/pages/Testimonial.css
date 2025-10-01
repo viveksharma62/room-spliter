@@ -1,0 +1,38 @@
+/* Form Card */
+.testimonial-form {
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+/* Testimonial Card */
+.testimonial-card {
+  border-radius: 12px;
+  background: #f8f9fa;
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+.testimonial-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+}
+
+/* Image */
+.testimonial-img {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border: 3px solid #0d6efd;
+  padding: 2px;
+}
+
+/* Stars */
+.testimonial-stars {
+  font-size: 1.2rem;
+  color: #ffb400;
+}
+
+/* Text */
+.testimonial-text {
+  font-style: italic;
+  font-size: 1rem;
+  color: #333;
+}
