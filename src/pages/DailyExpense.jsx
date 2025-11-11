@@ -15,7 +15,7 @@ const DailyExpense = () => {
 
   const navigate = useNavigate();
 
-  const expenseTypes = ["Water", "Shopping", "veg", "non-veg", "Other"];
+  const expenseTypes = ["Water", "Shopping", "Veg", "Non-Veg", "Other"];
 
   const fetchExpenses = async () => {
     setLoading(true);
@@ -35,6 +35,7 @@ const DailyExpense = () => {
     fetchExpenses();
   }, []);
 
+  // ✅ Updated handleSubmit (Now supports past date)
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!personName || !expenseType) return alert("Please enter name and expense type");
@@ -42,15 +43,19 @@ const DailyExpense = () => {
     const finalExpenseType = expenseType === "Other" ? otherExpense : expenseType;
 
     try {
+      // Convert selected date
+      const selectedDate = new Date(expenseDate);
+
       await addDoc(collection(db, "dailyExpenses"), {
         personName,
         expenseType: finalExpenseType,
         amount: amount ? parseFloat(amount) : 0,
         description,
-        expenseDate: new Date(expenseDate),
-        createdAt: new Date(),
+        expenseDate: selectedDate, // user-selected date
+        createdAt: selectedDate, // use same for sorting
       });
 
+      // Reset fields
       setPersonName("");
       setExpenseType("");
       setOtherExpense("");
@@ -59,11 +64,13 @@ const DailyExpense = () => {
       setExpenseDate(new Date().toISOString().substr(0, 10));
 
       fetchExpenses();
+      alert("Expense added successfully ✅");
     } catch (error) {
       console.error("Error adding expense:", error);
     }
   };
 
+  // Calculate totals per person
   const totals = allExpenses.reduce((acc, curr) => {
     const key = curr.personName || "Unknown";
     if (!acc[key]) acc[key] = 0;
@@ -79,15 +86,15 @@ const DailyExpense = () => {
   return (
     <div className="container mt-5">
       <div className="row">
-        
+
         {/* Form Section */}
         <div className="col-md-6 mb-4">
           <button
-          className="btn btn-outline-secondary mb-3"
-          onClick={() => navigate("/")}
-        >
-          ⬅ Back to home
-        </button>
+            className="btn btn-outline-secondary mb-3"
+            onClick={() => navigate("/")}
+          >
+            ⬅ Back to Home
+          </button>
 
           <div className="card shadow p-4">
             <h3 className="mb-4 text-primary">Add Daily Expense</h3>
@@ -155,17 +162,28 @@ const DailyExpense = () => {
                 />
               </div>
 
-              <div className="mb-3">
-                <label className="form-label">Expense Date</label>
-                <input
-                  type="date"
-                  className="form-control"
-                  value={expenseDate}
-                  onChange={(e) => setExpenseDate(e.target.value)}
-                  required
-                />
+              <div className="mb-3 d-flex align-items-center gap-2">
+                <div className="flex-grow-1">
+                  <label className="form-label">Expense Date</label>
+                  <input
+                    type="date"
+                    className="form-control"
+                    value={expenseDate}
+                    onChange={(e) => setExpenseDate(e.target.value)}
+                    required
+                  />
+                </div>
+                {/* Shortcut Button */}
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-primary mt-4"
+                  onClick={() =>
+                    setExpenseDate(new Date().toISOString().substr(0, 10))
+                  }
+                >
+                  Today
+                </button>
               </div>
-
 
               <button className="btn btn-success w-100 mb-3">Add Expense</button>
             </form>
