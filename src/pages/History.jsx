@@ -127,6 +127,12 @@ const History = () => {
       {/* Filter Buttons */}
       <div className="mb-3 text-center">
         <button
+         className={`btn btn-${filter === "my" ? "danger" : "outline-primary"} mx-1`}
+          onClick={() => navigate("/add-expense")}
+        >
+          ⬅ Back to Add Expense
+        </button>
+        <button
           className={`btn btn-${filter === "my" ? "primary" : "outline-primary"} mx-1`}
           onClick={() => setFilter("my")}
         >

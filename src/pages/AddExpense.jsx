@@ -95,6 +95,12 @@ const AddExpense = () => {
       <div className="row">
         {/* Form */}
         <div className="col-md-6 mb-4">
+          <button
+          className="btn btn-outline-secondary mb-3"
+          onClick={() => navigate("/")}
+        >
+          ⬅ Back to home
+        </button>
           <div className="card shadow p-4">
             <h3 className="mb-4 text-primary">Add Expense</h3>
             <form onSubmit={handleSubmit}>

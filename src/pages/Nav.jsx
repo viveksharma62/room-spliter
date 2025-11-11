@@ -49,6 +49,14 @@ const Nav = ({ isLoggedIn }) => {
                 </li>
                 <li className="nav-item">
                   <Link
+                    className={`nav-link ${isActive("/daily-expense")}`}
+                    to="/daily-expense"
+                  >
+                    Daily Expense
+                  </Link>
+                </li>
+                <li className="nav-item">
+                  <Link
                     className={`nav-link ${isActive("/person-account")}`}
                     to="/person-account"
                   >
