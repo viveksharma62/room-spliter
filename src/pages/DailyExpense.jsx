@@ -9,13 +9,21 @@ const DailyExpense = () => {
   const [otherExpense, setOtherExpense] = useState("");
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
-  const [expenseDate, setExpenseDate] = useState(new Date().toISOString().substr(0, 10));
+  const [expenseDate, setExpenseDate] = useState(
+    new Date().toISOString().substr(0, 10)
+  );
   const [allExpenses, setAllExpenses] = useState([]);
+  const [filteredExpenses, setFilteredExpenses] = useState([]);
+  const [selectedMonth, setSelectedMonth] = useState("");
   const [loading, setLoading] = useState(true);
 
   const navigate = useNavigate();
 
   const expenseTypes = ["Water", "Shopping", "Veg", "Non-Veg", "Other"];
+  const months = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  ];
 
   const fetchExpenses = async () => {
     setLoading(true);
@@ -25,6 +33,7 @@ const DailyExpense = () => {
       const data = [];
       snapshot.forEach((doc) => data.push({ id: doc.id, ...doc.data() }));
       setAllExpenses(data);
+      setFilteredExpenses(data);
     } catch (error) {
       console.error("Error fetching expenses:", error);
     }
@@ -35,7 +44,6 @@ const DailyExpense = () => {
     fetchExpenses();
   }, []);
 
-  // ✅ Updated handleSubmit (Now supports past date)
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!personName || !expenseType) return alert("Please enter name and expense type");
@@ -43,7 +51,6 @@ const DailyExpense = () => {
     const finalExpenseType = expenseType === "Other" ? otherExpense : expenseType;
 
     try {
-      // Convert selected date
       const selectedDate = new Date(expenseDate);
 
       await addDoc(collection(db, "dailyExpenses"), {
@@ -51,11 +58,10 @@ const DailyExpense = () => {
         expenseType: finalExpenseType,
         amount: amount ? parseFloat(amount) : 0,
         description,
-        expenseDate: selectedDate, // user-selected date
-        createdAt: selectedDate, // use same for sorting
+        expenseDate: selectedDate,
+        createdAt: selectedDate,
       });
 
-      // Reset fields
       setPersonName("");
       setExpenseType("");
       setOtherExpense("");
@@ -70,8 +76,24 @@ const DailyExpense = () => {
     }
   };
 
-  // Calculate totals per person
-  const totals = allExpenses.reduce((acc, curr) => {
+  // 🔹 Handle month filter
+  const handleMonthChange = (monthName) => {
+    setSelectedMonth(monthName);
+    if (!monthName) {
+      setFilteredExpenses(allExpenses);
+      return;
+    }
+
+    const monthIndex = months.indexOf(monthName);
+    const filtered = allExpenses.filter((exp) => {
+      const date = exp.createdAt?.toDate ? exp.createdAt.toDate() : new Date(exp.createdAt);
+      return date.getMonth() === monthIndex;
+    });
+    setFilteredExpenses(filtered);
+  };
+
+  // 🔹 Totals per person (based on filtered data)
+  const totals = filteredExpenses.reduce((acc, curr) => {
     const key = curr.personName || "Unknown";
     if (!acc[key]) acc[key] = 0;
     acc[key] += curr.amount;
@@ -87,7 +109,7 @@ const DailyExpense = () => {
     <div className="container mt-5">
       <div className="row">
 
-        {/* Form Section */}
+        {/* Left Form Section */}
         <div className="col-md-6 mb-4">
           <button
             className="btn btn-outline-secondary mb-3"
@@ -173,7 +195,6 @@ const DailyExpense = () => {
                     required
                   />
                 </div>
-                {/* Shortcut Button */}
                 <button
                   type="button"
                   className="btn btn-sm btn-outline-primary mt-4"
@@ -197,16 +218,34 @@ const DailyExpense = () => {
           </div>
         </div>
 
-        {/* Summary Section */}
+        {/* Right Summary Section */}
         <div className="col-md-6">
           <div className="card shadow p-4">
-            <h3 className="mb-4 text-primary">Daily Expense Summary</h3>
+            <h3 className="mb-4 text-primary">Expense Summary</h3>
+
+            {/* 🔽 Month Filter */}
+            <div className="mb-3">
+              <label className="form-label me-2">Filter by Month:</label>
+              <select
+                className="form-select w-auto d-inline-block"
+                value={selectedMonth}
+                onChange={(e) => handleMonthChange(e.target.value)}
+              >
+                <option value="">All Months</option>
+                {months.map((month, i) => (
+                  <option key={i} value={month}>
+                    {month}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {loading ? (
               <div>Loading...</div>
             ) : (
               <>
                 <ul className="list-group mb-3">
-                  {allExpenses.slice(0, 5).map((exp) => (
+                  {filteredExpenses.slice(0, 5).map((exp) => (
                     <li key={exp.id} className="list-group-item">
                       <div className="d-flex justify-content-between align-items-center">
                         <div>
@@ -230,6 +269,12 @@ const DailyExpense = () => {
                     </li>
                   ))}
                 </ul>
+
+                {/* 🔹 Total of selected month */}
+                <h6 className="mt-2 text-success">
+                  Total Expense ({selectedMonth || "All Months"}): ₹
+                  {filteredExpenses.reduce((sum, e) => sum + e.amount, 0)}
+                </h6>
               </>
             )}
           </div>

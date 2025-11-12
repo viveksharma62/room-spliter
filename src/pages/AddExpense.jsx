@@ -1,6 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { db, auth } from "../db/firebase";
-import { collection, addDoc, getDocs, query, orderBy, doc, getDoc } from "firebase/firestore";
+import {
+  collection,
+  addDoc,
+  getDocs,
+  query,
+  orderBy,
+  doc,
+  getDoc,
+} from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 
 const AddExpense = () => {
@@ -8,16 +16,26 @@ const AddExpense = () => {
 
   const [personEmail, setPersonEmail] = useState("");
   const [personName, setPersonName] = useState("");
-  const [isNameEditable, setIsNameEditable] = useState(false); 
+  const [isNameEditable, setIsNameEditable] = useState(false);
   const [expenseType, setExpenseType] = useState("");
   const [otherExpense, setOtherExpense] = useState("");
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
-  const [expenseDate, setExpenseDate] = useState(new Date().toISOString().substr(0,10));
+  const [expenseDate, setExpenseDate] = useState(
+    new Date().toISOString().substr(0, 10)
+  );
   const [allExpenses, setAllExpenses] = useState([]);
+  const [filteredExpenses, setFilteredExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedMonth, setSelectedMonth] = useState("All");
 
   const expenseTypes = ["Room Rent", "Water", "Electricity", "Shopping", "Food", "Other"];
+
+  const monthNames = [
+    "All",
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
+  ];
 
   // Fetch user name & email
   const fetchUser = async () => {
@@ -29,7 +47,7 @@ const AddExpense = () => {
       setPersonName(userSnap.data().name);
       setIsNameEditable(false);
     } else {
-      setPersonName(""); 
+      setPersonName("");
       setIsNameEditable(true);
     }
 
@@ -44,6 +62,7 @@ const AddExpense = () => {
     const data = [];
     snapshot.forEach((doc) => data.push({ id: doc.id, ...doc.data() }));
     setAllExpenses(data);
+    setFilteredExpenses(data);
     setLoading(false);
   };
 
@@ -52,11 +71,29 @@ const AddExpense = () => {
     fetchExpenses();
   }, []);
 
+  // ✅ Filter by selected month
+  useEffect(() => {
+    if (selectedMonth === "All") {
+      setFilteredExpenses(allExpenses);
+    } else {
+      const monthIndex = monthNames.indexOf(selectedMonth);
+      const filtered = allExpenses.filter((exp) => {
+        if (!exp.createdAt) return false;
+        const date = exp.createdAt.toDate
+          ? exp.createdAt.toDate()
+          : new Date(exp.createdAt.seconds * 1000);
+        return date.getMonth() + 1 === monthIndex;
+      });
+      setFilteredExpenses(filtered);
+    }
+  }, [selectedMonth, allExpenses]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!personEmail || !personName || !expenseType || !amount) return;
 
-    const finalExpenseType = expenseType === "Other" ? otherExpense : expenseType;
+    const finalExpenseType =
+      expenseType === "Other" ? otherExpense : expenseType;
 
     await addDoc(collection(db, "expenses"), {
       personEmail,
@@ -65,7 +102,7 @@ const AddExpense = () => {
       amount: parseFloat(amount),
       description,
       expenseDate: new Date(expenseDate),
-      createdAt: new Date()
+      createdAt: new Date(),
     });
 
     // Reset form
@@ -73,20 +110,24 @@ const AddExpense = () => {
     setOtherExpense("");
     setAmount("");
     setDescription("");
-    setExpenseDate(new Date().toISOString().substr(0,10));
+    setExpenseDate(new Date().toISOString().substr(0, 10));
 
     fetchExpenses();
   };
 
-  const totals = allExpenses.reduce((acc, curr) => {
-    const key = curr.personName ? `${curr.personName} (${curr.personEmail})` : curr.personEmail;
+  const totals = filteredExpenses.reduce((acc, curr) => {
+    const key = curr.personName
+      ? `${curr.personName} (${curr.personEmail})`
+      : curr.personEmail;
     if (!acc[key]) acc[key] = 0;
     acc[key] += curr.amount;
     return acc;
   }, {});
 
   const formatDate = (timestamp) => {
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    const date = timestamp.toDate
+      ? timestamp.toDate()
+      : new Date(timestamp);
     return date.toLocaleDateString() + " " + date.toLocaleTimeString();
   };
 
@@ -96,23 +137,22 @@ const AddExpense = () => {
         {/* Form */}
         <div className="col-md-6 mb-4">
           <button
-          className="btn btn-outline-secondary mb-3"
-          onClick={() => navigate("/")}
-        >
-          ⬅ Back to home
-        </button>
+            className="btn btn-outline-secondary mb-3"
+            onClick={() => navigate("/")}
+          >
+            ⬅ Back to home
+          </button>
           <div className="card shadow p-4">
             <h3 className="mb-4 text-primary">Add Expense</h3>
             <form onSubmit={handleSubmit}>
-              
               <div className="mb-3">
                 <label className="form-label">Your Name</label>
-                <input 
-                  type="text" 
-                  className="form-control" 
-                  value={personName} 
-                  onChange={(e) => setPersonName(e.target.value)} 
-                  readOnly={!isNameEditable} 
+                <input
+                  type="text"
+                  className="form-control"
+                  value={personName}
+                  onChange={(e) => setPersonName(e.target.value)}
+                  readOnly={!isNameEditable}
                   placeholder={isNameEditable ? "Enter your name" : ""}
                   required
                 />
@@ -120,40 +160,84 @@ const AddExpense = () => {
 
               <div className="mb-3">
                 <label className="form-label">Your Email</label>
-                <input type="text" className="form-control" value={personEmail} readOnly />
+                <input
+                  type="text"
+                  className="form-control"
+                  value={personEmail}
+                  readOnly
+                />
               </div>
 
               <div className="mb-3">
                 <label className="form-label">Expense Type</label>
-                <select className="form-select" value={expenseType} onChange={(e) => setExpenseType(e.target.value)} required>
+                <select
+                  className="form-select"
+                  value={expenseType}
+                  onChange={(e) => setExpenseType(e.target.value)}
+                  required
+                >
                   <option value="">Select Expense Type</option>
-                  {expenseTypes.map((type, i) => <option key={i} value={type}>{type}</option>)}
+                  {expenseTypes.map((type, i) => (
+                    <option key={i} value={type}>
+                      {type}
+                    </option>
+                  ))}
                 </select>
               </div>
 
               {expenseType === "Other" && (
                 <div className="mb-3">
                   <label className="form-label">Enter Your Expense Name</label>
-                  <input type="text" className="form-control" value={otherExpense} onChange={(e) => setOtherExpense(e.target.value)} required />
+                  <input
+                    type="text"
+                    className="form-control"
+                    value={otherExpense}
+                    onChange={(e) => setOtherExpense(e.target.value)}
+                    required
+                  />
                 </div>
               )}
 
               <div className="mb-3">
                 <label className="form-label">Amount</label>
-                <input type="number" className="form-control" value={amount} onChange={(e) => setAmount(e.target.value)} required />
+                <input
+                  type="number"
+                  className="form-control"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  required
+                />
               </div>
 
               <div className="mb-3">
                 <label className="form-label">Description (optional)</label>
-                <input type="text" className="form-control" value={description} onChange={(e) => setDescription(e.target.value)} />
+                <input
+                  type="text"
+                  className="form-control"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                />
               </div>
 
               <div className="mb-3">
                 <label className="form-label">Expense Date</label>
-                <input type="date" className="form-control" value={expenseDate} onChange={(e) => setExpenseDate(e.target.value)} required />
+                <input
+                  type="date"
+                  className="form-control"
+                  value={expenseDate}
+                  onChange={(e) => setExpenseDate(e.target.value)}
+                  required
+                />
               </div>
 
               <button className="btn btn-success w-100">Add Expense</button>
+              {/* History Button */}
+                <button
+                  className="btn btn-primary w-100 mt-3"
+                  onClick={() => navigate("/history")}
+                >
+                  View Expense History
+                </button>
             </form>
           </div>
         </div>
@@ -162,19 +246,41 @@ const AddExpense = () => {
         <div className="col-md-6">
           <div className="card shadow p-4">
             <h3 className="mb-4 text-primary">Expense Summary</h3>
+
+            {/* Month Dropdown */}
+            <div className="mb-3">
+              <label className="form-label">Filter by Month</label>
+              <select
+                className="form-select"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+              >
+                {monthNames.map((month) => (
+                  <option key={month} value={month}>
+                    {month}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {loading ? (
               <div>Loading...</div>
             ) : (
               <>
                 <ul className="list-group mb-3">
-                  {allExpenses.map((exp) => (
+                  {filteredExpenses.map((exp) => (
                     <li key={exp.id} className="list-group-item">
                       <div className="d-flex justify-content-between align-items-center">
                         <div>
-                          <strong>{exp.personName}</strong> ({exp.personEmail}) - {exp.expenseType}{" "}
-                          {exp.description && <small>({exp.description})</small>}
+                          <strong>{exp.personName}</strong> ({exp.personEmail}) -{" "}
+                          {exp.expenseType}{" "}
+                          {exp.description && (
+                            <small>({exp.description})</small>
+                          )}
                           <br />
-                          <small className="text-muted">{formatDate(exp.createdAt)}</small>
+                          <small className="text-muted">
+                            {formatDate(exp.createdAt)}
+                          </small>
                         </div>
                         <div>₹{exp.amount}</div>
                       </div>
@@ -185,20 +291,17 @@ const AddExpense = () => {
                 <h5>Total per Person:</h5>
                 <ul className="list-group mb-3">
                   {Object.entries(totals).map(([key, value]) => (
-                    <li key={key} className="list-group-item d-flex justify-content-between">
+                    <li
+                      key={key}
+                      className="list-group-item d-flex justify-content-between"
+                    >
                       <span>{key}</span>
                       <span>₹{value}</span>
                     </li>
                   ))}
                 </ul>
 
-                {/* History Button */}
-                <button 
-                  className="btn btn-primary w-100 mt-3" 
-                  onClick={() => navigate("/history")}
-                >
-                  View Expense History
-                </button>
+                
               </>
             )}
           </div>
