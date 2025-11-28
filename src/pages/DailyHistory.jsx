@@ -80,43 +80,88 @@ const DailyHistory = () => {
     setFilteredExpenses(filtered);
   };
 
-  // Download PDF
+  // Download PDF'
+  
   const downloadPDF = () => {
-    const docPDF = new jsPDF("p", "mm", "a4");
-    docPDF.setFontSize(18);
-    docPDF.text("RoomSplit - Monthly Expense History", 14, 20);
+  const docPDF = new jsPDF("p", "mm", "a4");
 
-    const headers = ["No", "Name", "Expense Type", "Amount (₹)", "Date", "Description"];
-    const xPositions = [14, 24, 70, 115, 145, 175];
-    let y = 30;
+  // HEADER
+  docPDF.setFontSize(20);
+  docPDF.text("RoomSplit - Water Expense History", 20, 11);
 
-    // Header
-    docPDF.setFontSize(12);
-    headers.forEach((h, i) => docPDF.text(h, xPositions[i], y));
-    docPDF.line(14, y + 2, 200, y + 2);
-    y += 10;
+  // Underline
+  docPDF.setLineWidth(0.5);
+  docPDF.line(0, 23, 400, 23);
 
-    filteredExpenses.forEach((exp, i) => {
-      if (y > 270) {
-        docPDF.addPage();
-        y = 20;
-        headers.forEach((h, i2) => docPDF.text(h, xPositions[i2], y));
-        docPDF.line(14, y + 2, 200, y + 2);
-        y += 10;
-      }
-      const dateStr = formatDate(exp.createdAt);
-      docPDF.text(String(i + 1), xPositions[0], y);
-      docPDF.text(exp.personName || "-", xPositions[1], y);
-      docPDF.text(exp.expenseType || "-", xPositions[2], y);
-      docPDF.text(String(exp.amount || "-"), xPositions[3], y);
-      docPDF.text(dateStr, xPositions[4], y, { maxWidth: 30 });
-      docPDF.text(exp.description || "-", xPositions[5], y, { maxWidth: 25 });
-      y += 10;
-    });
+  const headers = ["No", "Name", "Type", "Amount", "Date", "Desc"];
+  const x = [14, 24, 65, 105, 135, 165]; // Better spacing
+  let y = 30;
 
-    const monthLabel = selectedMonth || "All_Months";
-    docPDF.save(`RoomSplit_${monthLabel}_Expense_History.pdf`);
-  };
+  docPDF.setFontSize(12);
+  headers.forEach((h, i) => docPDF.text(h, x[i], y));
+  docPDF.line(14, y + 2, 200, y + 2);
+  y += 8;
+
+  let total = 0;
+
+  filteredExpenses.forEach((exp, i) => {
+    if (y > 260) {
+      docPDF.addPage();
+
+      docPDF.setFontSize(20);
+      docPDF.text("RoomSplit - Room + Water Expense History", 14, 20);
+      docPDF.line(14, 23, 200, 23);
+
+      y = 30;
+
+      docPDF.setFontSize(12);
+      headers.forEach((h, i2) => docPDF.text(h, x[i2], y));
+      docPDF.line(14, y + 2, 200, y + 2);
+      y += 8;
+    }
+
+    const dateStr = formatDate(exp.createdAt);
+    total += Number(exp.amount || 0);
+
+    // Row items
+    docPDF.text(String(i + 1), x[0], y);
+    docPDF.text(exp.personName || "-", x[1], y);
+    docPDF.text(exp.expenseType || "-", x[2], y);
+    docPDF.text(String(exp.amount || "-"), x[3], y);
+
+    // Date wrap fix
+    {const dateStr = exp.createdAt.toDate().toLocaleDateString("en-IN");
+    docPDF.text(dateStr, x[4], y, { maxWidth: 25 });}
+
+
+    // Description wrap fix
+    docPDF.text(exp.description || "-", x[5], y, { maxWidth: 30 });
+
+    y += 8;
+  });
+
+  // TOTAL AMOUNT BOX
+  y += 10;
+  docPDF.setFontSize(14);
+  docPDF.setFont("helvetica", "bold");
+
+  docPDF.rect(14, y - 6, 65, 12); // box
+  docPDF.text(`Total Amount: Rs. ${total}`, 18, y + 2);
+
+  docPDF.setFont("helvetica", "normal");
+
+  // FOOTER CENTER
+  const line = "----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------";
+  const address = "404, C Wing, Utkarsh Residency, Shivalay Chowk, Railnagar - 360001";
+
+  docPDF.setFontSize(11);
+  docPDF.text(line, 0, 285);
+  docPDF.text(address, 105, 290, { align: "center" });
+
+  const monthLabel = selectedMonth || "All_Months";
+  docPDF.save(`RoomSplit_${monthLabel}_Expense_History.pdf`);
+};
+
 
   return (
     <div className="d-flex flex-column min-vh-100">
