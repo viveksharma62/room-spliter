@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+ import React, { useEffect, useState } from "react";
 import { db, auth } from "../db/firebase";
 import {
   collection,
@@ -29,17 +29,35 @@ const AddExpense = () => {
   const [loading, setLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState("All");
 
-  const expenseTypes = ["Room Rent", "Water", "Electricity", "Shopping", "Food", "Other"];
+  const expenseTypes = [
+    "Room Rent",
+    "Water",
+    "Electricity",
+    "Shopping",
+    "Food",
+    "Other",
+  ];
 
   const monthNames = [
     "All",
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December",
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
   ];
 
-  // Fetch user name & email
+  // 🟦 Fetch user name and email
   const fetchUser = async () => {
     if (!auth.currentUser) return;
+
     const userRef = doc(db, "users", auth.currentUser.uid);
     const userSnap = await getDoc(userRef);
 
@@ -54,13 +72,15 @@ const AddExpense = () => {
     setPersonEmail(auth.currentUser.email);
   };
 
-  // Fetch all expenses
+  // 🟦 Fetch all expenses
   const fetchExpenses = async () => {
     setLoading(true);
     const q = query(collection(db, "expenses"), orderBy("createdAt", "desc"));
     const snapshot = await getDocs(q);
+
     const data = [];
     snapshot.forEach((doc) => data.push({ id: doc.id, ...doc.data() }));
+
     setAllExpenses(data);
     setFilteredExpenses(data);
     setLoading(false);
@@ -71,7 +91,7 @@ const AddExpense = () => {
     fetchExpenses();
   }, []);
 
-  // ✅ Filter by selected month
+  // 🟦 Month filter logic
   useEffect(() => {
     if (selectedMonth === "All") {
       setFilteredExpenses(allExpenses);
@@ -88,6 +108,7 @@ const AddExpense = () => {
     }
   }, [selectedMonth, allExpenses]);
 
+  // 🟦 Submit expense
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!personEmail || !personName || !expenseType || !amount) return;
@@ -105,7 +126,6 @@ const AddExpense = () => {
       createdAt: new Date(),
     });
 
-    // Reset form
     setExpenseType("");
     setOtherExpense("");
     setAmount("");
@@ -115,12 +135,15 @@ const AddExpense = () => {
     fetchExpenses();
   };
 
+  // 🟦 Calculate totals
   const totals = filteredExpenses.reduce((acc, curr) => {
     const key = curr.personName
       ? `${curr.personName} (${curr.personEmail})`
       : curr.personEmail;
+
     if (!acc[key]) acc[key] = 0;
     acc[key] += curr.amount;
+
     return acc;
   }, {});
 
@@ -134,17 +157,22 @@ const AddExpense = () => {
   return (
     <div className="container mt-5">
       <div className="row">
-        {/* Form */}
+        
+        {/* Left Side Form */}
         <div className="col-md-6 mb-4">
           <button
+            type="button"
             className="btn btn-outline-secondary mb-3"
             onClick={() => navigate("/")}
           >
             ⬅ Back to home
           </button>
+
           <div className="card shadow p-4">
             <h3 className="mb-4 text-primary">Add Expense</h3>
+
             <form onSubmit={handleSubmit}>
+              {/* User Name */}
               <div className="mb-3">
                 <label className="form-label">Your Name</label>
                 <input
@@ -153,11 +181,11 @@ const AddExpense = () => {
                   value={personName}
                   onChange={(e) => setPersonName(e.target.value)}
                   readOnly={!isNameEditable}
-                  placeholder={isNameEditable ? "Enter your name" : ""}
                   required
                 />
               </div>
 
+              {/* Email */}
               <div className="mb-3">
                 <label className="form-label">Your Email</label>
                 <input
@@ -168,6 +196,7 @@ const AddExpense = () => {
                 />
               </div>
 
+              {/* Expense Type */}
               <div className="mb-3">
                 <label className="form-label">Expense Type</label>
                 <select
@@ -185,6 +214,7 @@ const AddExpense = () => {
                 </select>
               </div>
 
+              {/* Other Expense */}
               {expenseType === "Other" && (
                 <div className="mb-3">
                   <label className="form-label">Enter Your Expense Name</label>
@@ -198,6 +228,7 @@ const AddExpense = () => {
                 </div>
               )}
 
+              {/* Amount */}
               <div className="mb-3">
                 <label className="form-label">Amount</label>
                 <input
@@ -209,6 +240,7 @@ const AddExpense = () => {
                 />
               </div>
 
+              {/* Description */}
               <div className="mb-3">
                 <label className="form-label">Description (optional)</label>
                 <input
@@ -219,6 +251,7 @@ const AddExpense = () => {
                 />
               </div>
 
+              {/* Date */}
               <div className="mb-3">
                 <label className="form-label">Expense Date</label>
                 <input
@@ -230,24 +263,29 @@ const AddExpense = () => {
                 />
               </div>
 
-              <button className="btn btn-success w-100">Add Expense</button>
-              {/* History Button */}
-                <button
-                  className="btn btn-primary w-100 mt-3"
-                  onClick={() => navigate("/history")}
-                >
-                  View Expense History
-                </button>
+              {/* Add Expense */}
+              <button className="btn btn-success w-100" type="submit">
+                Add Expense
+              </button>
+
+              {/* View History Button (Important: prevent form submit) */}
+              <button
+                type="button"
+                className="btn btn-primary w-100 mt-3"
+                onClick={() => navigate("/history")}
+              >
+                View Expense History
+              </button>
             </form>
           </div>
         </div>
 
-        {/* Summary */}
+        {/* Right Side Summary */}
         <div className="col-md-6">
           <div className="card shadow p-4">
             <h3 className="mb-4 text-primary">Expense Summary</h3>
 
-            {/* Month Dropdown */}
+            {/* Month Filter */}
             <div className="mb-3">
               <label className="form-label">Filter by Month</label>
               <select
@@ -263,6 +301,7 @@ const AddExpense = () => {
               </select>
             </div>
 
+            {/* Expense List */}
             {loading ? (
               <div>Loading...</div>
             ) : (
@@ -273,21 +312,23 @@ const AddExpense = () => {
                       <div className="d-flex justify-content-between align-items-center">
                         <div>
                           <strong>{exp.personName}</strong> ({exp.personEmail}) -{" "}
-                          {exp.expenseType}{" "}
+                          {exp.expenseType}
                           {exp.description && (
-                            <small>({exp.description})</small>
+                            <small> ({exp.description})</small>
                           )}
                           <br />
                           <small className="text-muted">
                             {formatDate(exp.createdAt)}
                           </small>
                         </div>
+
                         <div>₹{exp.amount}</div>
                       </div>
                     </li>
                   ))}
                 </ul>
 
+                {/* Total per Person */}
                 <h5>Total per Person:</h5>
                 <ul className="list-group mb-3">
                   {Object.entries(totals).map(([key, value]) => (
@@ -300,8 +341,6 @@ const AddExpense = () => {
                     </li>
                   ))}
                 </ul>
-
-                
               </>
             )}
           </div>

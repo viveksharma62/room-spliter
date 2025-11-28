@@ -1,6 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { auth, db } from "../db/firebase";
-import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  doc,
+  getDoc,
+} from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 import Loading from "./Loading";
 import { onAuthStateChanged } from "firebase/auth";
@@ -19,150 +26,168 @@ const History = () => {
 
   const monthNames = [
     "All",
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
   ];
 
+  // -------------------------
+  //  FETCH USER + EXPENSE DATA
+  // -------------------------
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    const unsub = onAuthStateChanged(auth, async (user) => {
       if (!user) {
         navigate("/");
         return;
       }
 
-      setLoading(true);
       try {
-        const userRef = doc(db, "users", user.uid);
-        const userSnap = await getDoc(userRef);
+        setLoading(true);
 
-        if (!userSnap.exists()) {
-          console.error("User document not found!");
-          setLoading(false);
-          return;
+        // USER FETCH
+        const userRef = doc(db, "users", user.uid);
+        const snap = await getDoc(userRef);
+        if (snap.exists()) {
+          setUserData(snap.data());
         }
 
-        setUserData(userSnap.data());
-
+        // ALL USERS
         const usersSnap = await getDocs(collection(db, "users"));
-        const usersList = [];
-        usersSnap.forEach((doc) => usersList.push({ id: doc.id, ...doc.data() }));
-        setAllUsers(usersList);
+        let list = [];
+        usersSnap.forEach((d) =>
+          list.push({ id: d.id, ...d.data() })
+        );
+        setAllUsers(list);
 
-        await fetchExpenses(user.email, filter);
+        // EXPENSE FETCH
+        fetchExpenses(user.email, filter);
       } catch (err) {
-        console.error("Error fetching data:", err);
+        console.log("Error:", err);
       }
-
-      setLoading(false);
     });
 
-    return () => unsubscribe();
-  }, [navigate, filter]);
+    return () => unsub();
+  }, [filter]);
 
-  const fetchExpenses = async (email, filterOption) => {
-    setLoading(true);
+  // -------------------------
+  //   FETCH EXPENSES
+  // -------------------------
+  const fetchExpenses = async (email, type) => {
     try {
-      const expensesRef = collection(db, "expenses");
-      let q;
-      if (filterOption === "my") {
-        q = query(expensesRef, where("personEmail", "==", email));
-      } else {
-        q = query(expensesRef);
-      }
-      const snapshot = await getDocs(q);
-      const expensesList = [];
-      snapshot.forEach((doc) => expensesList.push({ id: doc.id, ...doc.data() }));
+      setLoading(true);
+      const expRef = collection(db, "expenses"); // ⚠️ ensure collection name is "expenses"
 
-      expensesList.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
-      setExpenses(expensesList);
-      setFilteredExpenses(expensesList);
+      let q;
+      if (type === "my") {
+        q = query(expRef, where("personEmail", "==", email));
+      } else {
+        q = query(expRef); // all expenses
+      }
+
+      const snap = await getDocs(q);
+
+      const list = [];
+      snap.forEach((d) => list.push({ id: d.id, ...d.data() }));
+
+      // sort by latest
+      list.sort(
+        (a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)
+      );
+
+      setExpenses(list);
+      setFilteredExpenses(list);
+      setLoading(false);
     } catch (err) {
-      console.error("Error fetching expenses:", err);
+      console.log("EXPENSE ERROR:", err);
+      setLoading(false);
     }
-    setLoading(false);
   };
 
-  // Filter by selected month
+  // -------------------------
+  //   FILTER BY MONTH
+  // -------------------------
   useEffect(() => {
     if (selectedMonth === "All") {
       setFilteredExpenses(expenses);
-    } else {
-      const monthIndex = monthNames.indexOf(selectedMonth);
-      const filtered = expenses.filter((exp) => {
-        if (!exp.createdAt) return false;
-        const date = exp.createdAt.toDate ? exp.createdAt.toDate() : new Date(exp.createdAt.seconds * 1000);
-        return date.getMonth() + 1 === monthIndex;
-      });
-      setFilteredExpenses(filtered);
+      return;
     }
+
+    const index = monthNames.indexOf(selectedMonth);
+
+    const f = expenses.filter((e) => {
+      if (!e.createdAt) return false;
+
+      const d = e.createdAt.toDate
+        ? e.createdAt.toDate()
+        : new Date(e.createdAt.seconds * 1000);
+
+      return d.getMonth() + 1 === index;
+    });
+
+    setFilteredExpenses(f);
   }, [selectedMonth, expenses]);
 
-  const formatDate = (timestamp) => {
-    if (!timestamp) return "-";
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp.seconds * 1000);
-    return date.toLocaleDateString() + " " + date.toLocaleTimeString();
+  const formatDate = (t) => {
+    if (!t) return "-";
+    const d = t.toDate ? t.toDate() : new Date(t.seconds * 1000);
+    return d.toLocaleDateString() + " " + d.toLocaleTimeString();
   };
 
   const totalExpense =
     filter === "my"
       ? filteredExpenses
           .filter((e) => e.personEmail === userData?.email)
-          .reduce((acc, curr) => acc + (curr.amount || 0), 0)
-      : filteredExpenses.reduce((acc, curr) => acc + (curr.amount || 0), 0);
+          .reduce((a, b) => a + (b.amount || 0), 0)
+      : filteredExpenses.reduce((a, b) => a + (b.amount || 0), 0);
 
-  // ✅ Download PDF only
+  // -------------------------
+  // PDF DOWNLOAD
+  // -------------------------
   const downloadPDF = async () => {
     const input = document.getElementById("expense-table");
     if (!input) return;
 
     const canvas = await html2canvas(input, { scale: 2 });
-    const imgData = canvas.toDataURL("image/png");
+    const img = canvas.toDataURL("image/png");
 
     const pdf = new jsPDF("p", "mm", "a4");
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+    const width = pdf.internal.pageSize.getWidth();
+    const height = (canvas.height * width) / canvas.width;
 
-    // --- Header ---
-    pdf.setFontSize(18);
-    pdf.text("Room Splitter", pdfWidth / 2, 15, { align: "center" });
-
-    // --- Total Expense Box ---
-    pdf.setFontSize(12);
-    pdf.setFillColor(230, 230, 250);
-    pdf.rect(10, 20, pdfWidth - 20, 10, "F");
-    pdf.setTextColor(0, 0, 0);
-    pdf.text(`Total Expense: ₹${totalExpense}`, pdfWidth / 2, 27, { align: "center" });
-
-    // --- Table Content ---
-    pdf.addImage(imgData, "PNG", 10, 35, pdfWidth - 20, pdfHeight);
-
-    // --- Footer ---
-    const pageHeight = pdf.internal.pageSize.getHeight();
-    pdf.setFontSize(8);
-    pdf.text("Made by Vivek Sharma", 10, pageHeight - 10);
-    pdf.text("Room, Railnagar, Pin 360004, Gujarat", pdfWidth - 10, pageHeight - 10, { align: "right" });
-
-    pdf.save(`expenses_${filter}_${selectedMonth}.pdf`);
+    pdf.text("Room Splitter", width / 2, 12, { align: "center" });
+    pdf.addImage(img, "PNG", 10, 20, width - 20, height);
+    pdf.save("expenses.pdf");
   };
 
   if (loading) return <Loading />;
 
   return (
-    <div className="container mt-5">
-      {/* Filter Buttons */}
-      <div className="mb-3 text-center">
+    <div className="container mt-4">
+      {/* FILTER */}
+      <div className="text-center mb-3">
         <button
-          className={`btn btn-${filter === "my" ? "danger" : "outline-primary"} mx-1`}
+          className="btn btn-secondary mx-1"
           onClick={() => navigate("/add-expense")}
         >
-          ⬅ Back to Add Expense
+          ⬅ Back
         </button>
+
         <button
           className={`btn btn-${filter === "my" ? "primary" : "outline-primary"} mx-1`}
           onClick={() => setFilter("my")}
         >
           My Expenses
         </button>
+
         <button
           className={`btn btn-${filter === "all" ? "primary" : "outline-primary"} mx-1`}
           onClick={() => setFilter("all")}
@@ -170,16 +195,13 @@ const History = () => {
           All Expenses
         </button>
 
-        {/* Month Dropdown */}
         <select
           className="form-select d-inline-block w-auto mx-2"
           value={selectedMonth}
           onChange={(e) => setSelectedMonth(e.target.value)}
         >
-          {monthNames.map((month) => (
-            <option key={month} value={month}>
-              {month}
-            </option>
+          {monthNames.map((m) => (
+            <option key={m}>{m}</option>
           ))}
         </select>
 
@@ -188,63 +210,56 @@ const History = () => {
         </button>
       </div>
 
-      {/* Account Info */}
+      {/* ACCOUNT INFO */}
       {userData && (
-        <div className="card shadow p-4 mb-4">
-          <h2 className="text-primary mb-3 text-center">Your Info</h2>
-          <ul className="list-group list-group-flush">
-            <li className="list-group-item">
-              <strong>Name:</strong> {userData.name}
-            </li>
-            <li className="list-group-item">
-              <strong>Email:</strong> {userData.email}
-            </li>
-            <li className="list-group-item">
-              <strong>Mobile:</strong> {userData.mobile}
-            </li>
-            <li className="list-group-item">
-              <strong>Total Expense:</strong> ₹{totalExpense}
-            </li>
-            <li className="list-group-item">
-              <strong>Total Members:</strong> {allUsers.length}
-            </li>
+        <div className="card p-3 shadow mb-4">
+          <h4 className="text-center text-primary">Your Info</h4>
+          <ul className="list-group">
+            <li className="list-group-item"><b>Name:</b> {userData.name}</li>
+            <li className="list-group-item"><b>Email:</b> {userData.email}</li>
+            <li className="list-group-item"><b>Total Expense:</b> ₹{totalExpense}</li>
+            <li className="list-group-item"><b>Total Members:</b> {allUsers.length}</li>
           </ul>
         </div>
       )}
 
-      {/* Expense History */}
-      <div className="card shadow p-4" id="expense-table">
-        <h2 className="text-primary mb-3 text-center">Expense History ({selectedMonth})</h2>
+      {/* TABLE */}
+      <div className="card p-4 shadow" id="expense-table">
+        <h3 className="text-center text-primary mb-3">
+          Expense History ({selectedMonth})
+        </h3>
+
         {filteredExpenses.length === 0 ? (
-          <div className="text-center text-muted">No expenses found for this month.</div>
+          <p className="text-center text-muted">No expenses found.</p>
         ) : (
           <div className="table-responsive">
-            <table className="table table-striped table-bordered">
+            <table className="table table-bordered table-striped">
               <thead className="table-dark">
                 <tr>
                   <th>#</th>
                   <th>User</th>
-                  <th>Expense Type</th>
+                  <th>Type</th>
                   <th>Description</th>
-                  <th>Amount (₹)</th>
+                  <th>Amount</th>
                   <th>Expense Date</th>
                   <th>Added On</th>
                 </tr>
               </thead>
+
               <tbody>
-                {filteredExpenses.map((exp, index) => (
-                  <tr key={exp.id}>
-                    <td>{index + 1}</td>
-                    <td>{exp.personName || exp.personEmail}</td>
-                    <td>{exp.expenseType}</td>
-                    <td>{exp.description || "-"}</td>
-                    <td>₹{exp.amount || 0}</td>
+                {filteredExpenses.map((e, i) => (
+                  <tr key={e.id}>
+                    <td>{i + 1}</td>
+                    <td>{e.personName || e.personEmail}</td>
+                    <td>{e.expenseType}</td>
+                    <td>{e.description || "-"}</td>
+                    <td>₹{e.amount}</td>
                     <td>
-                      {exp.expenseDate
-                        ? new Date(exp.expenseDate.seconds * 1000).toLocaleDateString()
+                      {e.expenseDate
+                        ? new Date(e.expenseDate.seconds * 1000).toLocaleDateString()
                         : "-"}
                     </td>
-                    <td>{formatDate(exp.createdAt)}</td>
+                    <td>{formatDate(e.createdAt)}</td>
                   </tr>
                 ))}
               </tbody>
