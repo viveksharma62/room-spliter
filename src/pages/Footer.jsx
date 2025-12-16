@@ -13,10 +13,10 @@ const Footer = () => {
             <p className="small mb-1">
               <MdEmail className="me-2" />
               <a
-                href="mailto:viveksharma28402@gmail.com"
+                href="mailto:vks.webdev31@gmail.com"
                 className="text-light text-decoration-none"
               >
-                viveksharma28402@gmail.com
+                vks.webdev31@gmail.com
               </a>
             </p>
             <p className="small text-muted mb-0">
@@ -58,7 +58,7 @@ const Footer = () => {
         <div className="text-center small">
           <span>
             &copy; {new Date().getFullYear()} Room Splitter | Made with <span style={{ color: "#e25555" }}>❤</span> by Vivek Sharma | 
-            Location: Room, Railnagar, Pin 360004, Gujarat
+            Location: Shivalay chowk, Railnagar, Pin 360001, Gujarat
           </span>
         </div>
       </div>

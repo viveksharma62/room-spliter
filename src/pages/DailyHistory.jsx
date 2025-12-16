@@ -162,6 +162,12 @@ const DailyHistory = () => {
   docPDF.save(`RoomSplit_${monthLabel}_Expense_History.pdf`);
 };
 
+const totalAmount = filteredExpenses.reduce(
+  (sum, item) => sum + Number(item.amount || 0),
+  0
+);
+
+
 
   return (
     <div className="d-flex flex-column min-vh-100">
@@ -172,13 +178,27 @@ const DailyHistory = () => {
         >
           ⬅ Back to Add Expense
         </button>
-
+{/* 
         <div className="d-flex justify-content-between align-items-center mb-3">
           <h3 className="text-primary">Monthly Expense History</h3>
           <button className="btn btn-success" onClick={downloadPDF}>
             📄 Download PDF
           </button>
+        </div> */}
+        <div className="d-flex justify-content-between align-items-center mb-3">
+        <h3 className="text-primary">Monthly Expense History</h3>
+
+        <div className="d-flex align-items-center gap-3">
+          <strong className="text-danger">
+            Total: ₹{totalAmount}
+          </strong>
+
+          <button className="btn btn-success" onClick={downloadPDF}>
+            📄 Download PDF
+          </button>
         </div>
+      </div>
+
 
         {/* Month Filter Dropdown */}
         <div className="mb-4">

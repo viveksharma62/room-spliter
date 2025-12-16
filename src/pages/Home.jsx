@@ -22,7 +22,7 @@ const Home = () => {
           <p className="lead mb-4">
             Track expenses, settle payments, and live peacefully with roommates 🏠
           </p>
-          <div>
+          <div className="d-flex justify-content-center flex-wrap gap-3">
             <Button
               variant="warning"
               size="lg"
@@ -37,6 +37,14 @@ const Home = () => {
               onClick={() => navigate("/person-account")}
             >
               View Accounts 👤
+            </Button>
+
+            <Button
+              variant="light"
+              size="lg"
+              onClick={() => navigate("/daily-expense")}
+            >
+              Daily Expense
             </Button>
           </div>
         </Container>
